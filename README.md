@@ -114,7 +114,7 @@ flowchart TD
     RETR --> ANALYZE[3 - ANALYZE<br/>classify the evidence<br/>risk / opportunity / trend]
     ANALYZE --> DECIDE{4 - DECIDE<br/>enough evidence?}
     DECIDE -->|no - reformulate| PLAN
-    DECIDE -->|yes| RECOMMEND[5 - RECOMMEND<br/>Ollama llama3.1:8b<br/>structured JSON]
+    DECIDE -->|yes| RECOMMEND[5 - RECOMMEND<br/>Llama 3.1 8B — Ollama local / Groq cloud<br/>structured JSON]
     RECOMMEND --> VALIDATE{6 - VALIDATE<br/>grounded in evidence?}
     VALIDATE -->|no - redo| RECOMMEND
     VALIDATE -->|yes| RECS[(recommendations.json)]
@@ -338,6 +338,8 @@ AI CEO Strategic Intelligence Agent/
 ├── retrieval.py                        # the 3 retrieval tools (semantic / BM25 / hybrid)
 ├── agent.py                            # the AI agent — run_agent() (Goal→Plan→Retrieve→Analyze→Decide→Recommend→Validate)
 ├── app.py                              # Executive dashboard (Streamlit) — 8 pages + live agent chat
+├── streamlit_app.py                    # deployment entry point — routes LLM to Groq (see DEPLOY.md); local code unchanged
+├── DEPLOY.md                           # step-by-step public deployment guide (Streamlit Cloud + Groq)
 │
 ├── data/                               # all JSON data
 │   ├── lufthansa_data.json             #   341 clean, deduped docs (Task 1 output)
@@ -391,6 +393,22 @@ streamlit run app.py
 > The dashboard loads the saved JSON artifacts, so it opens instantly. The floating **"Ask the AI CEO"**
 > chat is the only feature that calls the LLM live — it needs **Ollama running** (`ollama serve`) with
 > `llama3.1:8b` pulled.
+
+---
+
+## Deployment (optional)
+
+The system runs locally on **Ollama** by design — open-source, private, offline (no paid APIs). For a
+public URL with a **working chatbot**, an *additive* entry point — **`streamlit_app.py`** — redirects the
+agent's LLM calls to **Groq's free hosted Llama 3.1 8B** and runs the *same* dashboard on top. The core
+code (`app.py` / `agent.py` / `retrieval.py`) is **unchanged** — only *where* the LLM runs differs.
+
+| | LLM backend | Run with |
+|---|---|---|
+| **Local (exam / demo)** | Ollama `llama3.1:8b` | `streamlit run app.py` |
+| **Deployed (Streamlit Cloud)** | Groq `llama-3.1-8b-instant` (free) | `streamlit_app.py` + a `GROQ_API_KEY` secret |
+
+Full step-by-step in **[DEPLOY.md](DEPLOY.md)**.
 
 ---
 
