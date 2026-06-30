@@ -405,24 +405,17 @@ code (`app.py` / `agent.py` / `retrieval.py`) is **unchanged** — only *where* 
 
 ```mermaid
 flowchart LR
-    subgraph LOCAL[Local — exam / demo]
-        direction TB
-        U1[User] --> A1[app.py<br/>Streamlit dashboard]
-        A1 --> AG1[run_agent<br/>7-step agent]
-        AG1 --> OL[(Ollama<br/>llama3.1:8b — local)]
-    end
+    U[User / examiner] --> APP[app.py<br/>Streamlit dashboard + chat]
+    APP --> AG[run_agent<br/>7-step agent]
+    AG -->|LLM calls| BACKEND{{LLM backend<br/>swappable}}
+    BACKEND --> OL[(Ollama · llama3.1:8b<br/>LOCAL — exam / demo)]
+    BACKEND --> GQ[(Groq · llama-3.1-8b-instant<br/>DEPLOYED — free, hosted)]
 
-    subgraph CLOUD[Deployed — Streamlit Cloud]
-        direction TB
-        U2[User / examiner] --> SA[streamlit_app.py<br/>redirects LLM calls to Groq]
-        SA --> A2[app.py<br/>SAME dashboard, unchanged]
-        A2 --> AG2[run_agent<br/>7-step agent]
-        AG2 --> GQ[(Groq API<br/>llama-3.1-8b-instant — free, hosted)]
-    end
+    SA[streamlit_app.py<br/>deploy wrapper] -. selects Groq at runtime .-> BACKEND
 ```
 
-> Same `app.py` + `run_agent` in both paths — the deployed version just wraps them with
-> `streamlit_app.py`, which swaps the LLM backend from Ollama to Groq at runtime.
+> The core flow (`app.py` → `run_agent`) is the **same** everywhere. The **LLM backend** is the only
+> swappable part: locally it's **Ollama**; when deployed, `streamlit_app.py` wires the backend to **Groq**.
 
 | | LLM backend | Run with |
 |---|---|---|
