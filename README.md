@@ -403,6 +403,27 @@ public URL with a **working chatbot**, an *additive* entry point — **`streamli
 agent's LLM calls to **Groq's free hosted Llama 3.1 8B** and runs the *same* dashboard on top. The core
 code (`app.py` / `agent.py` / `retrieval.py`) is **unchanged** — only *where* the LLM runs differs.
 
+```mermaid
+flowchart LR
+    subgraph LOCAL[Local — exam / demo]
+        direction TB
+        U1[User] --> A1[app.py<br/>Streamlit dashboard]
+        A1 --> AG1[run_agent<br/>7-step agent]
+        AG1 --> OL[(Ollama<br/>llama3.1:8b — local)]
+    end
+
+    subgraph CLOUD[Deployed — Streamlit Cloud]
+        direction TB
+        U2[User / examiner] --> SA[streamlit_app.py<br/>redirects LLM calls to Groq]
+        SA --> A2[app.py<br/>SAME dashboard, unchanged]
+        A2 --> AG2[run_agent<br/>7-step agent]
+        AG2 --> GQ[(Groq API<br/>llama-3.1-8b-instant — free, hosted)]
+    end
+```
+
+> Same `app.py` + `run_agent` in both paths — the deployed version just wraps them with
+> `streamlit_app.py`, which swaps the LLM backend from Ollama to Groq at runtime.
+
 | | LLM backend | Run with |
 |---|---|---|
 | **Local (exam / demo)** | Ollama `llama3.1:8b` | `streamlit run app.py` |
