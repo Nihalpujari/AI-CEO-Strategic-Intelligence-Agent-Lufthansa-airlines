@@ -15,6 +15,8 @@ black box.
 > **The goal is not information retrieval. The goal is strategic decision-making.**
 > The system is built to answer: *"If you were the CEO today, what would you do next and why?"*
 
+🔴 **Live demo:** **[ai-agent-lufthansa-airlines.streamlit.app](https://ai-agent-lufthansa-airlines.streamlit.app/)** — open the floating 💬 *"Ask the AI CEO"* chat (bottom-right) and ask a question; it runs the full agent live.
+
 ---
 
 ## Table of Contents
@@ -22,13 +24,15 @@ black box.
 2. [Features](#features)
 3. [Technology Stack](#technology-stack)
 4. [System Architecture](#system-architecture-diagram)
-5. [Data Flow](#data-flow-diagram)
-6. [AI Pipeline](#ai-pipeline)
-7. [Design Decisions](#design-decisions)
-8. [Project Structure](#project-structure)
-9. [Setup & Installation](#setup--installation)
-10. [How to Run](#how-to-run)
-11. [Limitations & Future Work](#limitations--future-work)
+5. [AI Agent Workflow](#ai-agent-workflow)
+6. [Data Flow](#data-flow-diagram)
+7. [AI Pipeline](#ai-pipeline)
+8. [Design Decisions](#design-decisions)
+9. [Project Structure](#project-structure)
+10. [Setup & Installation](#setup--installation)
+11. [How to Run](#how-to-run)
+12. [Deployment](#deployment-optional)
+13. [Limitations & Future Work](#limitations--future-work)
 
 ---
 
@@ -100,7 +104,8 @@ into the dashboard's live chat. Every step prints its reasoning (transparency).
 | Visualization | **matplotlib** | charts |
 
 > **No paid commercial LLM APIs are used.** The reasoning engine is a local, open-source model
-> served via Ollama, satisfying the project constraint.
+> served via Ollama, satisfying the project constraint. *(The optional public deployment swaps in
+> **Groq's free hosted Llama 3.1 8B** — the same open model, still no paid API; see [Deployment](#deployment-optional).)*
 
 ---
 
