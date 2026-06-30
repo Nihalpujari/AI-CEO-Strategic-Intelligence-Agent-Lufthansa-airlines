@@ -108,39 +108,53 @@ into the dashboard's live chat. Every step prints its reasoning (transparency).
 
 ```mermaid
 flowchart TD
-    %% ---- RUN TIME: the agent reads top-to-bottom, in order ----
-    GOAL([Goal: CEO question]) --> PLAN[1 - PLAN<br/>break goal into specific sub-questions]
-    PLAN --> RETR[2 - RETRIEVE<br/>run all 3 tools, dedup,<br/>best-k by consensus]
-    RETR --> ANALYZE[3 - ANALYZE<br/>classify the evidence<br/>risk / opportunity / trend]
-    ANALYZE --> DECIDE{4 - DECIDE<br/>enough evidence?}
-    DECIDE -->|no - reformulate| PLAN
-    DECIDE -->|yes| RECOMMEND[5 - RECOMMEND<br/>Llama 3.1 8B — Ollama local / Groq cloud<br/>structured JSON]
-    RECOMMEND --> VALIDATE{6 - VALIDATE<br/>grounded in evidence?}
-    VALIDATE -->|no - redo| RECOMMEND
-    VALIDATE -->|yes| RECS[(recommendations.json)]
-    RECS --> BRIEF[7 - DELIVER<br/>CEO briefing + dashboard]
-    BRIEF --> DASH[Executive Dashboard<br/>Streamlit · 8 pages · live agent chat]
+    %% ===================== PART 1 — EXAM REQUIREMENT =====================
+    subgraph EXAM[🎓 EXAM REQUIREMENT — the agentic RAG system]
+        direction TB
+        GOAL([Goal: CEO question]) --> PLAN[1 - PLAN<br/>break goal into specific sub-questions]
+        PLAN --> RETR[2 - RETRIEVE<br/>run all 3 tools, dedup,<br/>best-k by consensus]
+        RETR --> ANALYZE[3 - ANALYZE<br/>classify the evidence<br/>risk / opportunity / trend]
+        ANALYZE --> DECIDE{4 - DECIDE<br/>enough evidence?}
+        DECIDE -->|no - reformulate| PLAN
+        DECIDE -->|yes| RECOMMEND[5 - RECOMMEND<br/>structured JSON]
+        RECOMMEND --> VALIDATE{6 - VALIDATE<br/>grounded in evidence?}
+        VALIDATE -->|no - redo| RECOMMEND
+        VALIDATE -->|yes| RECS[(recommendations.json)]
+        RECS --> BRIEF[7 - DELIVER<br/>CEO briefing + dashboard]
+        BRIEF --> DASH[Executive Dashboard<br/>Streamlit · 8 pages · live agent chat]
 
-    %% ---- BUILD TIME: knowledge base, built once BEFORE the agent runs ----
-    subgraph KB[Knowledge base — built once, before the agent runs]
-        SOURCES[Public sources<br/>news / Reddit / competitors / company] -->|DDGS web search| COLLECT[Task 1: Collector<br/>clean + de-duplicate]
-        COLLECT --> JSON[(lufthansa_data.json<br/>clean docs)]
-        JSON -->|embed all-MiniLM-L6-v2| CHROMA[(ChromaDB vectors)]
-        JSON -->|word tokens| BM25IDX[(BM25 index)]
-        JSON -->|zero-shot classify| INTEL[Task 4: Classifier<br/>risk / opportunity / trend<br/>+ sentiment + severity]
-        INTEL --> LABELED[(lufthansa_labeled.json)]
-        CHROMA --> SEM[Semantic search]
-        CHROMA --> HYB[Hybrid search]
-        BM25IDX --> BM[BM25 search]
-        BM25IDX --> HYB
+        subgraph KB[Knowledge base — built once, before the agent runs]
+            SOURCES[Public sources<br/>news / Reddit / competitors / company] -->|DDGS web search| COLLECT[Task 1: Collector<br/>clean + de-duplicate]
+            COLLECT --> JSON[(lufthansa_data.json<br/>clean docs)]
+            JSON -->|embed all-MiniLM-L6-v2| CHROMA[(ChromaDB vectors)]
+            JSON -->|word tokens| BM25IDX[(BM25 index)]
+            JSON -->|zero-shot classify| INTEL[Task 4: Classifier<br/>risk / opportunity / trend<br/>+ sentiment + severity]
+            INTEL --> LABELED[(lufthansa_labeled.json)]
+            CHROMA --> SEM[Semantic search]
+            CHROMA --> HYB[Hybrid search]
+            BM25IDX --> BM[BM25 search]
+            BM25IDX --> HYB
+        end
+
+        SEM -. tool .-> RETR
+        BM  -. tool .-> RETR
+        HYB -. tool .-> RETR
+        LABELED -. labels .-> ANALYZE
+        MEM[(conversation memory)] -. context .-> PLAN
     end
 
-    %% ---- the build feeds the agent: 3 retrieval tools + labels + memory ----
-    SEM -. tool .-> RETR
-    BM  -. tool .-> RETR
-    HYB -. tool .-> RETR
-    LABELED -. labels .-> ANALYZE
-    MEM[(conversation memory)] -. context .-> PLAN
+    %% ===================== PART 2 — DEPLOYMENT =====================
+    subgraph DEPLOY[🚀 DEPLOYMENT — hosting and swappable LLM backend]
+        direction TB
+        USER[User / examiner] --> ENTRY[streamlit_app.py<br/>deploy wrapper<br/>local: run app.py directly]
+        ENTRY --> BACKEND{{LLM backend — swappable}}
+        BACKEND --> OL[(Ollama · llama3.1:8b<br/>LOCAL — exam / demo)]
+        BACKEND --> GQ[(Groq · llama-3.1-8b-instant<br/>DEPLOYED — free, hosted)]
+    end
+
+    %% ===================== WIRES between the two parts =====================
+    ENTRY ==>|serves| DASH
+    BACKEND -. powers the LLM steps:<br/>plan · decide · recommend · validate .-> RECOMMEND
 ```
 
 > **Accuracy notes (matches the code):** Cleaning happens **once at collection** (Task 1), so `lufthansa_data.json` is already clean (341 docs). **Task 4** saves, per document: `category` + its zero-shot **confidence** (`category_score`), 3-class **sentiment**, and a zero-shot **severity** for risks; the LLM rates each opportunity's **impact** (High / Medium / Low). The **agent** treats all three retrievers — *semantic*, *BM25*, and *hybrid* — as **tools**: for each planned sub-question it runs all three, pools the results, dedups by URL, and keeps the best documents by **consensus** (documents found by more methods rank higher). The Analyze step reads the Task-4 labels of the retrieved docs.
@@ -403,19 +417,9 @@ public URL with a **working chatbot**, an *additive* entry point — **`streamli
 agent's LLM calls to **Groq's free hosted Llama 3.1 8B** and runs the *same* dashboard on top. The core
 code (`app.py` / `agent.py` / `retrieval.py`) is **unchanged** — only *where* the LLM runs differs.
 
-```mermaid
-flowchart LR
-    U[User / examiner] --> APP[app.py<br/>Streamlit dashboard + chat]
-    APP --> AG[run_agent<br/>7-step agent]
-    AG -->|LLM calls| BACKEND{{LLM backend<br/>swappable}}
-    BACKEND --> OL[(Ollama · llama3.1:8b<br/>LOCAL — exam / demo)]
-    BACKEND --> GQ[(Groq · llama-3.1-8b-instant<br/>DEPLOYED — free, hosted)]
-
-    SA[streamlit_app.py<br/>deploy wrapper] -. selects Groq at runtime .-> BACKEND
-```
-
-> The core flow (`app.py` → `run_agent`) is the **same** everywhere. The **LLM backend** is the only
-> swappable part: locally it's **Ollama**; when deployed, `streamlit_app.py` wires the backend to **Groq**.
+> The two parts and how they wire together are shown in the **System Architecture Diagram** above
+> (🎓 Exam Requirement ⟷ 🚀 Deployment). The core flow (`app.py` → `run_agent`) is the **same**
+> everywhere — only the **LLM backend** is swapped: locally **Ollama**, when deployed **Groq**.
 
 | | LLM backend | Run with |
 |---|---|---|
